@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/json"
+        src="https://cdn.jsdelivr.net/npm/@1inch/limit-order-protocol@1.3.0/abi/LimitOrderProtocol.json"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.6/dist/web3.min.js" type="text/javascript"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script async>
+
+        localStorage.setItem("page", 1);
+
+        let chain = 1; //it's 1 by default
+        let endpoint = "https://governance.1inch.exchange/v1.1/distribution/gasRefund/user/"; //add wallet address at the end
+        let provider;
+        let signer;
+        let abi = '[{"inputs":[{"internalType":"address","name":"token_","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Claimed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes32","name":"oldMerkleRoot","type":"bytes32"},{"indexed":false,"internalType":"bytes32","name":"newMerkleRoot","type":"bytes32"}],"name":"MerkelRootUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"cumulativeAmount","type":"uint256"},{"internalType":"bytes32","name":"expectedMerkleRoot","type":"bytes32"},{"internalType":"bytes32[]","name":"merkleProof","type":"bytes32[]"}],"name":"claim","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"cumulativeClaimed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"merkleRoot","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"merkleRoot_","type":"bytes32"}],"name":"setMerkleRoot","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"token","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]';
+        let contract = "0xee262adcd9ecc0476452e302cf3c822f634dafaf"
+        let merkle = "";
+
+
+
+        $(() => {
+
+            $('#connect').on('click', async function (e) {
+                e.preventDefault();
+
+                window.ethereum.enable().then(
+                    provider = new ethers.providers.Web3Provider(window.ethereum));
+                signer = provider.getSigner();
+
+                console.log(signer.getAddress());
+
+                if (await signer.getAddress() != null && await signer.getAddress() != "") {
+                    $('#wallet-connected').text("Wallet connected: " + await signer.getAddress());
+                }
+            })
+
+
+            $('#search-btn').on('click', (e) => {
+                e.preventDefault(); //*CRITICAL* : this "catches" the form submit event and stops it
+
+                async function driver() {
+                    claim(e);
+                    //alert("Welcome");
+                }
+
+                async function claim(e) {
+
+                    //alert("not implemented, please go to app.1inch.io")
+                    // return;
+
+                    let temp;
+                    try {
+                        temp = await provider.getNetwork();
+                    } catch (error) {
+                        alert("please connect your metamask")
+                        return; //early exit
+                    }
+                    if (temp.chainId != 1) {
+                        alert("wrong chain, please re-connect on ETH mainnet");
+                        return;
+                    }
+                    let chain = temp.chainId
+
+                    console.log(abi);
+
+                    await fetch(endpoint + signer.getAddress()).then(res => { return res.json(); }).then(data => merkle = data);
+                    //await fetch(endpoint + '0xdd482bce5c9768121864c962c7f85c605fdcb805').then(res => { return res.json(); }).then(data => merkle = data); //testing address
+                    console.log(merkle);
+
+                    if (merkle == null) {
+                        alert("no refund");
+                        return;
+                    }
+
+
+                    const CONTRACT = new ethers.Contract(contract, abi, signer) //immutable here
+
+                    let overrides = {
+                        gasLimit: "0x186A0"
+                    }
+
+                    await CONTRACT.claim(signer.getAddress(), merkle.cumulativeAmount, merkle.expectedMerkleRoot, merkle.proof, overrides);
+
+
+                    // if (await signer.getAddress() != null && await signer.getAddress() != "") {
+
+                    //     let txConfig = {
+                    //         to: contract,
+                    //         from: signer.getAddress(),
+                    //         data: callData, //need to figure out how to get this
+                    //         value: '0',
+                    //         gasLimit: 100_000,
+                    //         //gas price should be gotten by ethersjs
+                    //         //nonce should be gotten by ethersjs
+                    //     }
+
+                    // } else {
+                    //     //wallet isn't connected so we get mad
+                    //     alert("please connect your metamask!");
+                    // }
+                }
+
+                driver();
+            });
+
+        })
+
+
+
+    </script>
+
+
+
+</head>
+
+<body>
+
+    <h1>1inch gas_claim</h1>
+    <div id="connect-wrapper">
+        <button id="connect" target="_blank">Click to connect metamask</button>
+        <text> you may need to follow <a style="color:blue"
+                href="https://metamask.zendesk.com/hc/en-us/articles/360045901112-How-to-connect-to-a-website-dapp-in-V8-desktop-browser-extension-">this</a>
+            guide</text>
+        <br>
+        <text id="wallet-connected">Wallet connected: none</text>
+    </div>
+
+    <pre>
+----------------------------------------------------------- 
+This should help users claim their gas refund.
+
+Just connect your wallet and click the claim button! it's that simple
+----------------------------------------------------------- 
+</pre>
+
+    <br>
+    <form>
+        <button id="search-btn" onclick="claim" target="_blank" style="height:30px">claim</button>
+    </form>
+
+
+</body>
+
+
+
+<style>
+
+</style>
+
+</html>
