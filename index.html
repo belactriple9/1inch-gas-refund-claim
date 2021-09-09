@@ -66,7 +66,7 @@
 
                     console.log(abi);
 
-                    await fetch(endpoint + signer.getAddress()).then(res => { return res.json(); }).then(data => merkle = data);
+                    await fetch(endpoint + await signer.getAddress()).then(res => { return res.json(); }).then(data => merkle = data);
                     //await fetch(endpoint + '0xdd482bce5c9768121864c962c7f85c605fdcb805').then(res => { return res.json(); }).then(data => merkle = data); //testing address
                     console.log(merkle);
 
